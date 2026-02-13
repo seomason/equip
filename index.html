@@ -78,23 +78,27 @@
       el("idText").textContent = equipId;
       setMsg("불러오는 중...");
 
-      try {
-        const json = await jsonp(`${API_URL}?id=${encodeURIComponent(equipId)}`);
-        const json = await res.json();
+async function load() {
+  if (!equipId) { setMsg("URL에 ?id= 가 없습니다. 예: ?id=BLS-06-0001", "err"); return; }
+  el("idText").textContent = equipId;
+  setMsg("불러오는 중...");
 
-        if (!json.ok) { setMsg("조회 실패: " + json.error, "err"); return; }
+  try {
+    const json = await jsonp(`${API_URL}?id=${encodeURIComponent(equipId)}`);
 
-        const d = json.data || {};
-        el("nameText").textContent = d.name || "-";
-        el("serialText").textContent = d.serial || "-";
-        el("status").value = d.status || "OK";
-        el("location").value = d.location || "";
-        el("owner").value = d.owner || "";
-        setMsg("로드 완료 ✅", "ok");
-      } catch (e) {
-        setMsg("조회 중 오류: " + e, "err");
-      }
-    }
+    if (!json.ok) { setMsg("조회 실패: " + json.error, "err"); return; }
+
+    const d = json.data || {};
+    el("nameText").textContent = d.name || "-";
+    el("serialText").textContent = d.serial || "-";
+    el("status").value = d.status || "OK";
+    el("location").value = d.location || "";
+    el("owner").value = d.owner || "";
+    setMsg("로드 완료 ✅", "ok");
+  } catch (e) {
+    setMsg("조회 중 오류: " + e, "err");
+  }
+}
 function jsonp(url) {
   return new Promise((resolve, reject) => {
     const cb = "cb_" + Math.random().toString(36).slice(2);
@@ -146,6 +150,7 @@ function jsonp(url) {
   </script>
 </body>
 </html>
+
 
 
 
