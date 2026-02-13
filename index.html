@@ -79,7 +79,7 @@
       setMsg("불러오는 중...");
 
       try {
-        const res = await fetch(`${API_URL}?id=${encodeURIComponent(equipId)}`);
+        const json = await jsonp(`${API_URL}?id=${encodeURIComponent(equipId)}`);
         const json = await res.json();
 
         if (!json.ok) { setMsg("조회 실패: " + json.error, "err"); return; }
@@ -95,7 +95,24 @@
         setMsg("조회 중 오류: " + e, "err");
       }
     }
-
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = "cb_" + Math.random().toString(36).slice(2);
+    window[cb] = (data) => {
+      delete window[cb];
+      script.remove();
+      resolve(data);
+    };
+    const script = document.createElement("script");
+    script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cb;
+    script.onerror = () => {
+      delete window[cb];
+      script.remove();
+      reject(new Error("JSONP load failed"));
+    };
+    document.head.appendChild(script);
+  });
+}
     async function save() {
       if (!equipId) return;
 
@@ -129,5 +146,6 @@
   </script>
 </body>
 </html>
+
 
 
