@@ -63,55 +63,71 @@
     <button id="saveBtn">저장 (시트 반영)</button>
   </div>
 
-  <script>
+ <script>
   const API_URL = "https://script.google.com/macros/s/AKfycbybWwU7jxyQt-76H9i-5SbXQiAeNmIoWxNk_z5Y1OCOkyXWiS852JK7Px5EUvZw6IJngQ/exec";
 
   const el = (id) => document.getElementById(id);
-  const setMsg = (text, cls="muted") => {
-    el("msg").className = "msg " + cls;
-    el("msg").textContent = text;
-  };
 
-  const qs = new URLSearchParams(location.search);
-  const equipId = (qs.get("id") || "").trim();
+  function setMsg(text, cls="muted") {
+    const m = el("msg");
+    if (!m) return;
+    m.className = "msg " + cls;
+    m.textContent = text;
+  }
 
-  // ✅ JSONP helper
+  // ✅ div/span이면 textContent, input이면 value로 넣어주는 헬퍼
+  function setField(id, value) {
+    const node = el(id);
+    if (!node) return false;
+    if ("value" in node) node.value = value ?? "";
+    else node.textContent = value ?? "-";
+    return true;
+  }
+
   function jsonp(url) {
     return new Promise((resolve, reject) => {
       const cb = "cb_" + Math.random().toString(36).slice(2);
-
       const script = document.createElement("script");
+
       const cleanup = () => {
         try { delete window[cb]; } catch {}
-        if (script && script.parentNode) script.parentNode.removeChild(script);
+        if (script.parentNode) script.parentNode.removeChild(script);
       };
 
-      window[cb] = (data) => {
-        cleanup();
-        resolve(data);
-      };
+      window[cb] = (data) => { cleanup(); resolve(data); };
 
       script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cb;
       script.async = true;
-      script.onerror = () => {
-        cleanup();
-        reject(new Error("JSONP load failed"));
-      };
+      script.onerror = () => { cleanup(); reject(new Error("JSONP load failed")); };
 
       document.head.appendChild(script);
     });
   }
 
+  const qs = new URLSearchParams(location.search);
+  const equipId = (qs.get("id") || "").trim();
+
   async function load() {
+    // 1) URL 파라미터 확인
     if (!equipId) {
       setMsg("URL에 ?id= 가 없습니다. 예: ?id=BLS-06-0001", "err");
       return;
     }
-    el("idText").textContent = equipId;
+
+    // 2) DOM 요소 ID 매칭 확인 (이게 안 맞으면 아무리 호출해도 화면이 안 바뀜)
+    //    idText/nameText/serialText 가 실제 HTML에 있어야 함
+    setField("idText", equipId);
+
     setMsg("불러오는 중...");
 
+    // 3) 실제 호출
+    const callUrl = `${API_URL}?id=${encodeURIComponent(equipId)}`;
     try {
-      const json = await jsonp(`${API_URL}?id=${encodeURIComponent(equipId)}`);
+      const json = await jsonp(callUrl);
+
+      // 디버그: 응답이 왔는지 화면에 찍기
+      // (msg 영역이 안 보이면 HTML에 id="msg"가 없는 거임)
+      setMsg("응답 수신: " + JSON.stringify(json).slice(0, 160) + (JSON.stringify(json).length > 160 ? "..." : ""), "muted");
 
       if (!json || !json.ok) {
         setMsg("조회 실패: " + (json?.error || "unknown"), "err");
@@ -119,11 +135,15 @@
       }
 
       const d = json.data || {};
-      el("nameText").textContent = d.name ?? "-";
-      el("serialText").textContent = d.serial ?? "-";
-      el("status").value = d.status || "OK";
-      el("location").value = d.location || "";
-      el("owner").value = d.owner || "";
+
+      // 4) 화면 채우기 (div/span/input 모두 지원)
+      setField("nameText", d.name);
+      setField("serialText", d.serial);
+
+      // select/input은 value로
+      if (el("status")) el("status").value = d.status || "OK";
+      if (el("location")) el("location").value = d.location || "";
+      if (el("owner")) el("owner").value = d.owner || "";
 
       setMsg("로드 완료 ✅", "ok");
     } catch (e) {
@@ -131,16 +151,21 @@
     }
   }
 
-  // 일단 느낌 확인을 위해 저장 버튼은 막아둠 (CORS 때문에 POST는 다음 단계에서 운영형으로 처리)
-  el("saveBtn").addEventListener("click", () => {
-    setMsg("저장은 다음 단계에서 (운영형 구조로) 연결할게요. 지금은 조회 느낌 확인!", "muted");
-  });
+  // 저장은 일단 안내만 (POST는 CORS 때문에 다음 단계에서 운영형으로 처리하는 게 깔끔)
+  const btn = el("saveBtn");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      setMsg("저장은 다음 단계에서 안정적으로 연결할게요. (지금은 조회 동작 확인)", "muted");
+    });
+  }
 
   load();
 </script>
 
+
 </body>
 </html>
+
 
 
 
