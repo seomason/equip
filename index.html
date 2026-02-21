@@ -121,7 +121,7 @@
     setMsg("불러오는 중...");
 
     // 3) 실제 호출
-    const callUrl = `${API_URL}?id=${encodeURIComponent(equipId)}`;
+    const callUrl = `${API_URL}?&id=${encodeURIComponent(equipId)}`;
     try {
       const json = await jsonp(callUrl);
 
@@ -165,6 +165,7 @@
 
 </body>
 </html>
+
 
 
 
