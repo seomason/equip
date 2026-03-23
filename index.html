@@ -1,86 +1,174 @@
-<script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbybWwU7jxyQt-76H9i-5SbXQiAeNmIoWxNk_z5Y1OCOkyXWiS852JK7Px5EUvZw6IJngQ/exec";
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>장비 조회/수정 (Sheets 연동)</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Noto Sans KR", sans-serif;
+      margin: 18px;
+      background: #fafafa;
+    }
+    .box {
+      max-width: 560px;
+      background: #fff;
+      border: 1px solid #e7e7e7;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.05);
+    }
+    h2 { margin: 0 0 6px; }
+    .muted { color: #777; font-size: 12px; }
+    .kv {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      background: #fcfcfc;
+    }
+    .k { font-size: 12px; color: #666; }
+    .v { font-weight: 700; margin-top: 4px; }
+    label { display: block; margin-top: 10px; font-size: 13px; color: #444; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid #d8d8d8;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      border: 0;
+      border-radius: 12px;
+      background: #111;
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .msg { margin-top: 10px; font-size: 13px; }
+    .ok { color: #0a7; }
+    .err { color: #c33; }
+    code {
+      background: #f1f1f1;
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>장비 조회/수정 (Sheets 연동)</h2>
+    <div class="muted">
+      URL에 <code>?id=BLS-06-0001</code> 처럼 붙이면 해당 장비를 불러옵니다.
+    </div>
 
-  const el = (id) => document.getElementById(id);
+    <div id="msg" class="msg muted">JS 시작됨</div>
 
-  function setMsg(text, cls = "muted") {
-    const m = el("msg");
-    if (!m) return;
-    m.className = "msg " + cls;
-    m.textContent = text;
-  }
+    <div class="kv">
+      <div class="k">장비코드</div>
+      <div class="v" id="idText">-</div>
+    </div>
+    <div class="kv">
+      <div class="k">장비명</div>
+      <div class="v" id="nameText">-</div>
+    </div>
+    <div class="kv">
+      <div class="k">시리얼</div>
+      <div class="v" id="serialText">-</div>
+    </div>
 
-  function setField(id, value) {
-    const node = el(id);
-    if (!node) return false;
-    if ("value" in node) node.value = value ?? "";
-    else node.textContent = value ?? "-";
-    return true;
-  }
+    <label>상태</label>
+    <select id="status">
+      <option value="OK">OK</option>
+      <option value="REPAIR">REPAIR</option>
+      <option value="OUT">OUT</option>
+      <option value="LOST">LOST</option>
+    </select>
 
-  const qs = new URLSearchParams(location.search);
-  const equipId = (qs.get("id") || "").trim();
+    <label>위치</label>
+    <input id="location" placeholder="예: R&D Lab / 창고A / 현장" />
 
-  async function load() {
-    if (!equipId) {
-      setMsg("URL에 ?id= 가 없습니다. 예: ?id=BLS-06-0001", "err");
-      return;
+    <label>담당자</label>
+    <input id="owner" placeholder="예: 서중근" />
+
+    <label>기록자(로그용)</label>
+    <input id="user" placeholder="예: 서중근" />
+
+    <button id="saveBtn" type="button">저장 (시트 반영)</button>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbybWwU7jxyQt-76H9i-5SbXQiAeNmIoWxNk_z5Y1OCOkyXWiS852JK7Px5EUvZw6IJngQ/exec";
+
+    const el = (id) => document.getElementById(id);
+
+    function setMsg(text, cls = "muted") {
+      const m = el("msg");
+      if (!m) return;
+      m.className = "msg " + cls;
+      m.textContent = text;
     }
 
-    setField("idText", equipId);
-    setMsg("불러오는 중...");
+    function setField(id, value) {
+      const node = el(id);
+      if (!node) return;
+      if ("value" in node) node.value = value ?? "";
+      else node.textContent = value ?? "-";
+    }
 
-    const callUrl = API_URL + (API_URL.includes("?") ? "&" : "?") + "id=" + encodeURIComponent(equipId);
+    const qs = new URLSearchParams(window.location.search);
+    const equipId = (qs.get("id") || "").trim();
 
-    try {
-      const res = await fetch(callUrl, {
-        method: "GET",
-        redirect: "follow",
-        headers: {
-          "Accept": "application/json"
-        }
-      });
-
-      if (!res.ok) {
-        throw new Error("HTTP " + res.status);
-      }
-
-      const json = await res.json();
-
-      setMsg(
-        "응답 수신: " +
-          JSON.stringify(json).slice(0, 160) +
-          (JSON.stringify(json).length > 160 ? "..." : ""),
-        "muted"
-      );
-
-      if (!json || !json.ok) {
-        setMsg("조회 실패: " + (json?.error || "unknown"), "err");
+    async function load() {
+      if (!equipId) {
+        setMsg("URL에 ?id= 가 없습니다. 예: ?id=BLS-06-0001", "err");
         return;
       }
 
-      const d = json.data || {};
+      setField("idText", equipId);
+      setMsg("불러오는 중...");
 
-      setField("nameText", d.name || "-");
-      setField("serialText", d.serial || "-");
+      const callUrl = API_URL + "?id=" + encodeURIComponent(equipId);
 
-      if (el("status")) el("status").value = d.status || "OK";
-      if (el("location")) el("location").value = d.location || "";
-      if (el("owner")) el("owner").value = d.owner || "";
+      try {
+        const res = await fetch(callUrl, {
+          method: "GET",
+          headers: { "Accept": "application/json" }
+        });
 
-      setMsg("로드 완료 ✅", "ok");
-    } catch (e) {
-      console.error("load error:", e);
-      setMsg("조회 중 오류: " + e.message, "err");
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+
+        const json = await res.json();
+
+        if (!json || !json.ok) {
+          setMsg("조회 실패: " + (json && json.error ? json.error : "unknown"), "err");
+          return;
+        }
+
+        const d = json.data || {};
+        setField("nameText", d.name || "-");
+        setField("serialText", d.serial || "-");
+        setField("status", d.status || "OK");
+        setField("location", d.location || "");
+        setField("owner", d.owner || "");
+
+        setMsg("로드 완료 ✅", "ok");
+      } catch (e) {
+        console.error(e);
+        setMsg("조회 중 오류: " + e.message, "err");
+      }
     }
-  }
 
-  const btn = el("saveBtn");
-  if (btn) {
-    btn.addEventListener("click", () => {
-      setMsg("저장은 다음 단계에서 연결할게요. 지금은 조회만 확인 중입니다.", "muted");
+    el("saveBtn").addEventListener("click", function () {
+      setMsg("저장 기능은 다음 단계에서 연결", "muted");
     });
-  }
 
-  load();
-</script>
+    load();
+  </script>
+</body>
+</html>
