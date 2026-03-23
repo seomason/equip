@@ -101,7 +101,7 @@
   </div>
 
  <script>
-  const API_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AWDtjMWDvIb10L9R2iQB4GJvbzP0gM8JAWThO136DDHhpWoFymO97akio5SzTltWrh70HU-4jOvYy6tg1_yD6kPNzfVZPbc2FAKDGjKdtObrCamvaFC7VmWR63G1EwwZwqIqthoAhLBeYYVqgI2OF_SzB5UAmmKoGfsaVZo5OGyay00WIYQKI-RIVaoVScs6XTDm-XH-jyKbgulAb9PV9hbAN-KoHvUpHtCS6Awli3PYaFduv2jlL0IpUxmMa6Wq8qVqL7NWBPfdQZ4yWZZ4RYcBciz1CPXCylxzmHSsgie7MWDN72vY3RXtbMebs4dcqw&lib=Mn2uIH0iP2IsZDY4EO6XNKViXKDoZpddv";
+  const API_URL = "https://script.google.com/macros/s/AKfycbybWwU7jxyQt-76H9i-5SbXQiAeNmIoWxNk_z5Y1OCOkyXWiS852JK7Px5EUvZw6IJngQ/exec";
 
   const el = (id) => document.getElementById(id);
 
@@ -119,41 +119,6 @@
     else node.textContent = value ?? "-";
   }
 
-  function jsonp(url) {
-    return new Promise((resolve, reject) => {
-      const cb = "cb_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-      const script = document.createElement("script");
-      const fullUrl = url + (url.includes("?") ? "&" : "?") + "callback=" + encodeURIComponent(cb);
-
-      const cleanup = () => {
-        try { delete window[cb]; } catch (_) {}
-        if (script.parentNode) script.parentNode.removeChild(script);
-      };
-
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new Error("JSONP timeout: " + fullUrl));
-      }, 15000);
-
-      window[cb] = (data) => {
-        clearTimeout(timer);
-        cleanup();
-        resolve(data);
-      };
-
-      script.src = fullUrl;
-      script.async = true;
-
-      script.onerror = () => {
-        clearTimeout(timer);
-        cleanup();
-        reject(new Error("JSONP load failed: " + fullUrl));
-      };
-
-      document.head.appendChild(script);
-    });
-  }
-
   const qs = new URLSearchParams(location.search);
   const equipId = (qs.get("id") || "").trim();
 
@@ -169,7 +134,13 @@
     const callUrl = API_URL + "?id=" + encodeURIComponent(equipId);
 
     try {
-      const json = await jsonp(callUrl);
+      const res = await fetch(callUrl);
+
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status);
+      }
+
+      const json = await res.json();
 
       if (!json || !json.ok) {
         setMsg("조회 실패: " + (json?.error || "unknown"), "err");
@@ -177,8 +148,10 @@
       }
 
       const d = json.data || {};
+
       setField("nameText", d.name || "-");
       setField("serialText", d.serial || "-");
+
       if (el("status")) el("status").value = d.status || "OK";
       if (el("location")) el("location").value = d.location || "";
       if (el("owner")) el("owner").value = d.owner || "";
