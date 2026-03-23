@@ -1,82 +1,15 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>장비 태그 데모 (Sheets 연동)</title>
-  <style>
-    body { font-family: system-ui, -apple-system, "Noto Sans KR", sans-serif; margin: 18px; background:#fafafa; }
-    .box { max-width: 560px; background:#fff; border:1px solid #e7e7e7; border-radius: 14px; padding: 16px; box-shadow:0 6px 22px rgba(0,0,0,0.05);}
-    h2 { margin:0 0 6px; }
-    .muted { color:#777; font-size: 12px; }
-    .kv { margin:10px 0; padding:10px; border:1px solid #eee; border-radius: 12px; background:#fcfcfc; }
-    .k { font-size:12px; color:#666; }
-    .v { font-weight:700; margin-top:4px; }
-    label { display:block; margin-top:10px; font-size:13px; color:#444; }
-    input, select { width:100%; padding:10px; border-radius: 12px; border:1px solid #d8d8d8; }
-    button { width:100%; margin-top:12px; padding:12px; border:0; border-radius:12px; background:#111; color:#fff; font-weight:800; cursor:pointer; }
-    .msg { margin-top:10px; font-size:13px; }
-    .ok { color:#0a7; }
-    .err { color:#c33; }
-    code { background:#f1f1f1; padding:2px 6px; border-radius: 8px; }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <h2>장비 조회/수정 (Sheets 연동)</h2>
-    <div class="muted">
-      URL에 <code>?id=BLS-06-0001</code> 처럼 붙이면 해당 장비를 불러옵니다. (NFC 태그 URL도 이 방식)
-    </div>
-
-    <div id="msg" class="msg muted"></div>
-
-    <div class="kv">
-      <div class="k">장비코드</div>
-      <div class="v" id="idText">-</div>
-    </div>
-    <div class="kv">
-      <div class="k">장비명</div>
-      <div class="v" id="nameText">-</div>
-    </div>
-    <div class="kv">
-      <div class="k">시리얼</div>
-      <div class="v" id="serialText">-</div>
-    </div>
-
-    <label>상태</label>
-    <select id="status">
-      <option value="OK">OK</option>
-      <option value="REPAIR">REPAIR</option>
-      <option value="OUT">OUT</option>
-      <option value="LOST">LOST</option>
-    </select>
-
-    <label>위치</label>
-    <input id="location" placeholder="예: R&D Lab / 창고A / 현장" />
-
-    <label>담당자</label>
-    <input id="owner" placeholder="예: 서중근" />
-
-    <label>기록자(로그용)</label>
-    <input id="user" placeholder="예: 서중근" />
-
-    <button id="saveBtn">저장 (시트 반영)</button>
-  </div>
-
- <script>
-   const API_URL = "https://script.google.com/macros/s/AKfycbybWwU7jxyQt-76H9i-5SbXQiAeNmIoWxNk_z5Y1OCOkyXWiS852JK7Px5EUvZw6IJngQ/exec";
-  //const API_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLjSqQLLfBMLrFQEZ0dubL4Udn5n1mBDTYS8rpAMwrXTAR94LHxkl5Hnyv8gPiB-ZilLbPH1c3IcFrNJgOmL3Z6R-vQOa7HWBniHhPrYhUmQjts0j0IHr6LnKnYWhtXZl5lQcrL3RoLY9nREbSEexWwJBQoJn22vPpZqHKFHSLALs33fwvm4YxYqyDqsU4ylIonW1iJjtkymobFJeE1xBdwUcZrGEGai-RReY02verM_kHeOZzaXOpF0zcIHIuTLjfWrIGWY48O6vYLmCvoKITw1ntOfNRELkzZPgBwMgVORhdRlujBGbeasPOV3Mw3fUETjzWWt&lib=Mn2uIH0iP2IsZDY4EO6XNKViXKDoZpddv";
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbybWwU7jxyQt-76H9i-5SbXQiAeNmIoWxNk_z5Y1OCOkyXWiS852JK7Px5EUvZw6IJngQ/exec";
 
   const el = (id) => document.getElementById(id);
 
-  function setMsg(text, cls="muted") {
+  function setMsg(text, cls = "muted") {
     const m = el("msg");
     if (!m) return;
     m.className = "msg " + cls;
     m.textContent = text;
   }
 
-  // ✅ div/span이면 textContent, input이면 value로 넣어주는 헬퍼
   function setField(id, value) {
     const node = el(id);
     if (!node) return false;
@@ -85,51 +18,41 @@
     return true;
   }
 
-  function jsonp(url) {
-    return new Promise((resolve, reject) => {
-      const cb = "cb_" + Math.random().toString(36).slice(2);
-      const script = document.createElement("script");
-
-      const cleanup = () => {
-        try { delete window[cb]; } catch {}
-        if (script.parentNode) script.parentNode.removeChild(script);
-      };
-
-      window[cb] = (data) => { cleanup(); resolve(data); };
-
-      script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cb;
-      script.async = true;
-      script.onerror = () => { cleanup(); reject(new Error("JSONP load failed")); };
-
-      document.head.appendChild(script);
-    });
-  }
-
   const qs = new URLSearchParams(location.search);
   const equipId = (qs.get("id") || "").trim();
 
   async function load() {
-    // 1) URL 파라미터 확인
     if (!equipId) {
       setMsg("URL에 ?id= 가 없습니다. 예: ?id=BLS-06-0001", "err");
       return;
     }
 
-    // 2) DOM 요소 ID 매칭 확인 (이게 안 맞으면 아무리 호출해도 화면이 안 바뀜)
-    //    idText/nameText/serialText 가 실제 HTML에 있어야 함
     setField("idText", equipId);
-
     setMsg("불러오는 중...");
 
-    // 3) 실제 호출
-    //const callUrl = `${API_URL}&id=${encodeURIComponent(equipId)}`;
     const callUrl = API_URL + (API_URL.includes("?") ? "&" : "?") + "id=" + encodeURIComponent(equipId);
-    try {
-      const json = await jsonp(callUrl);
 
-      // 디버그: 응답이 왔는지 화면에 찍기
-      // (msg 영역이 안 보이면 HTML에 id="msg"가 없는 거임)
-      setMsg("응답 수신: " + JSON.stringify(json).slice(0, 160) + (JSON.stringify(json).length > 160 ? "..." : ""), "muted");
+    try {
+      const res = await fetch(callUrl, {
+        method: "GET",
+        redirect: "follow",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status);
+      }
+
+      const json = await res.json();
+
+      setMsg(
+        "응답 수신: " +
+          JSON.stringify(json).slice(0, 160) +
+          (JSON.stringify(json).length > 160 ? "..." : ""),
+        "muted"
+      );
 
       if (!json || !json.ok) {
         setMsg("조회 실패: " + (json?.error || "unknown"), "err");
@@ -138,42 +61,26 @@
 
       const d = json.data || {};
 
-      // 4) 화면 채우기 (div/span/input 모두 지원)
-      setField("nameText", d.name);
-      setField("serialText", d.serial);
+      setField("nameText", d.name || "-");
+      setField("serialText", d.serial || "-");
 
-      // select/input은 value로
       if (el("status")) el("status").value = d.status || "OK";
       if (el("location")) el("location").value = d.location || "";
       if (el("owner")) el("owner").value = d.owner || "";
 
       setMsg("로드 완료 ✅", "ok");
     } catch (e) {
+      console.error("load error:", e);
       setMsg("조회 중 오류: " + e.message, "err");
     }
   }
 
-  // 저장은 일단 안내만 (POST는 CORS 때문에 다음 단계에서 운영형으로 처리하는 게 깔끔)
   const btn = el("saveBtn");
   if (btn) {
     btn.addEventListener("click", () => {
-      setMsg("저장은 다음 단계에서 안정적으로 연결할게요. (지금은 조회 동작 확인)", "muted");
+      setMsg("저장은 다음 단계에서 연결할게요. 지금은 조회만 확인 중입니다.", "muted");
     });
   }
 
   load();
 </script>
-
-
-</body>
-</html>
-
-
-
-
-
-
-
-
-
-
