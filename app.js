@@ -77,16 +77,22 @@ function getStatus(value) {
   return String(value || "").trim().toUpperCase() || "-";
 }
 
-function statusClass(status) {
+function statusGroup(status) {
   const normalized = normalizeKey(status);
+  if (normalized === "ok" || normalized === "in") return "READY";
+  return status;
+}
+
+function statusClass(status) {
+  const normalized = normalizeKey(statusGroup(status));
   if (normalized === "out") return "status-out";
   if (normalized === "repair") return "status-repair";
-  if (normalized === "ok") return "status-ok";
+  if (normalized === "ready") return "status-ok";
   return "status-other";
 }
 
 function displayStatus(status) {
-  return normalizeKey(status) === "ok" ? "READY" : status;
+  return statusGroup(status);
 }
 
 function asText(value) {
@@ -273,7 +279,7 @@ function buildCards(mainRows, detailRows) {
 
 function getFilteredCards() {
   return state.cards.filter((card) => {
-    const statusMatch = state.filteredStatus === "all" || card.status === state.filteredStatus;
+    const statusMatch = state.filteredStatus === "all" || statusGroup(card.status) === state.filteredStatus;
     const searchPool = [
       card.title,
       card.status,
@@ -290,11 +296,12 @@ function getFilteredCards() {
 
 function updateMetrics() {
   const counts = state.cards.reduce((acc, card) => {
-    acc[normalizeKey(card.status)] = (acc[normalizeKey(card.status)] || 0) + 1;
+    const key = normalizeKey(statusGroup(card.status));
+    acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
   els.totalCount.textContent = state.cards.length;
-  els.readyCount.textContent = counts.ok || 0;
+  els.readyCount.textContent = counts.ready || 0;
   els.outCount.textContent = counts.out || 0;
   els.repairCount.textContent = counts.repair || 0;
   els.updatedAt.textContent = new Date().toLocaleTimeString("ko-KR", {
@@ -306,7 +313,8 @@ function updateMetrics() {
 
 function renderFilters() {
   const statusCounts = state.cards.reduce((acc, card) => {
-    acc[card.status] = (acc[card.status] || 0) + 1;
+    const label = statusGroup(card.status);
+    acc[label] = (acc[label] || 0) + 1;
     return acc;
   }, {});
   const filters = [
@@ -315,7 +323,7 @@ function renderFilters() {
   ];
 
   els.statusFilters.innerHTML = filters
-    .map((filter) => `<button class="segment ${state.filteredStatus === filter.key ? "active" : ""}" data-status="${filter.key}" type="button">${filter.label}</button>`)
+.map((filter) => `<button class="segment ${state.filteredStatus === filter.key ? "active" : ""}" data-status="${filter.key}" type="button">${filter.label}</button>`)
     .join("");
 }
 

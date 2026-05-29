@@ -46,6 +46,20 @@ select {
   margin-bottom: 22px;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.brand-logo {
+  width: 148px;
+  max-width: 28vw;
+  max-height: 56px;
+  object-fit: contain;
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: var(--accent);
@@ -360,6 +374,11 @@ h1 {
 
   .topbar {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .brand {
+    align-items: flex-start;
     flex-direction: column;
   }
 
