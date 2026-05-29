@@ -306,6 +306,20 @@ function compareEquipment(a, b) {
   });
 }
 
+function groupRank(groupName) {
+  const normalized = normalizeKey(groupName);
+  if (normalized === "bms4000b") return 0;
+  if (normalized === "bms4000") return 1;
+  return 2;
+}
+
+function groupClass(groupName) {
+  const normalized = normalizeKey(groupName);
+  if (normalized === "bms4000b") return "group-4000b";
+  if (normalized === "bms4000") return "group-4000";
+  return "group-other";
+}
+
 function groupCards(cards) {
   const groups = new Map();
   cards.slice().sort(compareEquipment).forEach((card) => {
@@ -314,9 +328,11 @@ function groupCards(cards) {
     groups.get(groupName).push(card);
   });
 
-  return Array.from(groups.entries()).sort(([a], [b]) =>
-    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
-  );
+  return Array.from(groups.entries()).sort(([a], [b]) => {
+    const rankDiff = groupRank(a) - groupRank(b);
+    if (rankDiff !== 0) return rankDiff;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+  });
 }
 
 function updateMetrics() {
@@ -356,7 +372,7 @@ function renderCards() {
   const cards = getFilteredCards();
   els.cardGrid.innerHTML = groupCards(cards)
     .map(([groupName, groupCards]) => `
-      <section class="equipment-group">
+      <section class="equipment-group ${groupClass(groupName)}">
         <h2 class="group-title">${escapeHtml(groupName)}</h2>
         <div class="equipment-board">
           ${groupCards.map(renderCard).join("")}

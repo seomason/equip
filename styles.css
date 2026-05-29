@@ -1,6 +1,6 @@
 :root {
-  color-scheme: light;
-  --bg: #f3f4f4;
+  color-scheme: dark;
+  --bg: #111517;
   --panel: #181d20;
   --panel-2: #21282c;
   --line: #344047;
@@ -21,7 +21,7 @@ body {
   margin: 0;
   min-height: 100vh;
   background: var(--bg);
-  color: #111517;
+  color: var(--text);
   font-family: "Segoe UI", "Noto Sans KR", Arial, sans-serif;
 }
 
@@ -32,10 +32,10 @@ select {
 }
 
 .dashboard {
-  width: min(1720px, 100%);
+  width: 100%;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 28px;
+  padding: 28px 40px;
 }
 
 .topbar {
@@ -229,30 +229,43 @@ h1 {
 }
 
 .equipment-group {
-  padding: 18px 20px 16px;
-  border: 6px solid #ffc400;
-  background: #ffffff;
+  padding: 18px;
+  border: 4px solid #ffc400;
+  border-radius: 8px;
+  background: #171c1f;
+}
+
+.equipment-group.group-4000b {
+  border-color: #ffc400;
+}
+
+.equipment-group.group-4000 {
+  border-color: #58bfe0;
+}
+
+.equipment-group.group-other {
+  border-color: #f1f4f3;
 }
 
 .group-title {
   margin: 0 0 14px;
-  color: #050708;
+  color: #f5f7f7;
   font-size: clamp(26px, 3.5vw, 42px);
   line-height: 1;
 }
 
 .equipment-board {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px;
-  padding: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  padding: 14px;
   background: #0e1416;
 }
 
 .equipment-card {
   position: relative;
-  min-height: 158px;
-  padding: 10px;
+  min-height: 244px;
+  padding: 20px;
   border: 1px solid #263236;
   border-radius: 2px;
   background: #dfe5e7;
@@ -284,23 +297,23 @@ h1 {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 22px;
 }
 
 .card-head h3 {
   margin: 0;
   color: #0e1a20;
   text-shadow: none;
-  font-size: 14px;
+  font-size: 24px;
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
 
 .status-pill {
-  min-height: 20px;
-  padding: 4px 8px;
-  font-size: 10px;
+  min-height: 30px;
+  padding: 6px 12px;
+  font-size: 14px;
   color: #ffffff;
 }
 
@@ -333,29 +346,29 @@ h1 {
 .basic-info {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-  margin: 0 0 9px;
+  gap: 8px;
+  margin: 0 0 14px;
 }
 
 .basic-info div {
   min-width: 0;
-  padding: 6px;
-  border-radius: 5px;
+  padding: 10px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.62);
   border: 1px solid rgba(19, 32, 38, 0.1);
 }
 
 .basic-info dt {
-  margin: 0 0 4px;
+  margin: 0 0 5px;
   color: #40606a;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
 }
 
 .basic-info dd {
   margin: 0;
   color: #14222a;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
@@ -363,21 +376,21 @@ h1 {
 .detail-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 8px;
 }
 
 .detail-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 7px;
   max-width: 100%;
-  min-height: 22px;
-  padding: 4px 7px;
+  min-height: 30px;
+  padding: 6px 10px;
   border: 1px solid rgba(19, 32, 38, 0.18);
-  border-radius: 5px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.68);
   color: #14222a;
-  font-size: 10px;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 
@@ -410,7 +423,7 @@ h1 {
   }
 
   .equipment-board {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .basic-info {
