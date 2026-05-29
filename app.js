@@ -294,6 +294,31 @@ function getFilteredCards() {
   });
 }
 
+function getEquipmentGroup(title) {
+  const value = String(title || "").trim();
+  return value.replace(/-[A-Z]?\d+$/i, "") || "ETC";
+}
+
+function compareEquipment(a, b) {
+  return String(a.title).localeCompare(String(b.title), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function groupCards(cards) {
+  const groups = new Map();
+  cards.slice().sort(compareEquipment).forEach((card) => {
+    const groupName = getEquipmentGroup(card.title);
+    if (!groups.has(groupName)) groups.set(groupName, []);
+    groups.get(groupName).push(card);
+  });
+
+  return Array.from(groups.entries()).sort(([a], [b]) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+  );
+}
+
 function updateMetrics() {
   const counts = state.cards.reduce((acc, card) => {
     const key = normalizeKey(statusGroup(card.status));
@@ -329,29 +354,38 @@ function renderFilters() {
 
 function renderCards() {
   const cards = getFilteredCards();
-  els.cardGrid.innerHTML = cards
-    .map((card) => {
-      const detailItems = Object.entries(card.details)
-        .filter(([, value]) => value)
-        .map(([label, value]) => `<span class="detail-chip"><b>${escapeHtml(label)}</b>${escapeHtml(value)}</span>`)
-        .join("");
-
-      return `
-        <article class="equipment-card ${statusClass(card.status)}">
-          <div class="card-head">
-            <h2>${escapeHtml(card.title)}</h2>
-            <span class="status-pill">${escapeHtml(displayStatus(card.status))}</span>
-          </div>
-          <dl class="basic-info">
-            <div><dt>STATUS</dt><dd>${escapeHtml(displayStatus(card.status))}</dd></div>
-            <div><dt>Location</dt><dd>${escapeHtml(card.location || "-")}</dd></div>
-            <div><dt>OWNER</dt><dd>${escapeHtml(card.owner || "-")}</dd></div>
-          </dl>
-          <div class="detail-list">${detailItems || `<span class="detail-chip muted">FW -</span>`}</div>
-        </article>
-      `;
-    })
+  els.cardGrid.innerHTML = groupCards(cards)
+    .map(([groupName, groupCards]) => `
+      <section class="equipment-group">
+        <h2 class="group-title">${escapeHtml(groupName)}</h2>
+        <div class="equipment-board">
+          ${groupCards.map(renderCard).join("")}
+        </div>
+      </section>
+    `)
     .join("");
+}
+
+function renderCard(card) {
+  const detailItems = Object.entries(card.details)
+    .filter(([, value]) => value)
+    .map(([label, value]) => `<span class="detail-chip"><b>${escapeHtml(label)}</b>${escapeHtml(value)}</span>`)
+    .join("");
+
+  return `
+    <article class="equipment-card ${statusClass(card.status)}">
+      <div class="card-head">
+        <h3>${escapeHtml(card.title)}</h3>
+        <span class="status-pill">${escapeHtml(displayStatus(card.status))}</span>
+      </div>
+      <dl class="basic-info">
+        <div><dt>STATUS</dt><dd>${escapeHtml(displayStatus(card.status))}</dd></div>
+        <div><dt>Location</dt><dd>${escapeHtml(card.location || "-")}</dd></div>
+        <div><dt>OWNER</dt><dd>${escapeHtml(card.owner || "-")}</dd></div>
+      </dl>
+      <div class="detail-list">${detailItems || `<span class="detail-chip muted">FW -</span>`}</div>
+    </article>
+  `;
 }
 
 function render() {
