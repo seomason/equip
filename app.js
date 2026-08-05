@@ -1,7 +1,7 @@
 const SHEET_ID = "1kVhHgGniXLDvcvAbAK_XFrVWa_bQWg_NBSJd8tuzKdI";
 const MAIN_GID = "0";
 const DETAIL_GID = "39509448";
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz7dvT2ZBVZTHRvB3czQO4w9sIXMB7Vgkn6fplLqeY4BQxedp1FfwqdmhnGfTSOxGEjmg/exec?mode=dashboard";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxHBCS3-7XPLx3eIxfbdvalcWrxtCXSUm-2FGoeFXrQ75fWCUsrnYSAk4Kv3IACMpFE7w/exec?mode=dashboard";
 
 const REQUIRED_MAIN_COLUMNS = ["STATUS", "Location", "OWNER"];
 const OUT_DETAIL_COLUMNS = ["low power", "RF1", "RF2", "FW"];
@@ -38,7 +38,10 @@ const state = {
   filteredStatus: "all",
   search: "",
   timer: null,
+  hasLiveData: false,
 };
+
+const CACHE_KEY = "equipment-dashboard-live-cache-v1";
 
 const fallbackMainRows = [
   { Equipment: "BMS-4000-C1", STATUS: "OUT", Location: "R&D LAB", OWNER: "서종근" },
@@ -158,11 +161,12 @@ function loadAppsScriptDashboard() {
     const script = document.createElement("script");
     const url = new URL(APPS_SCRIPT_URL);
     url.searchParams.set("callback", callbackName);
+    url.searchParams.set("_", Date.now().toString());
 
     const timeout = window.setTimeout(() => {
       cleanup();
       reject(new Error("Apps Script 응답 시간이 초과되었습니다."));
-    }, 12000);
+    }, 30000);
 
     function cleanup() {
       window.clearTimeout(timeout);
@@ -193,8 +197,21 @@ function loadAppsScriptDashboard() {
   });
 }
 
+async function loadAppsScriptDashboardWithRetry() {
+  try {
+    return await loadAppsScriptDashboard();
+  } catch (firstError) {
+    await new Promise((resolve) => window.setTimeout(resolve, 1200));
+    try {
+      return await loadAppsScriptDashboard();
+    } catch {
+      throw firstError;
+    }
+  }
+}
+
 async function loadDashboardRows() {
-  if (APPS_SCRIPT_URL) return loadAppsScriptDashboard();
+  if (APPS_SCRIPT_URL) return loadAppsScriptDashboardWithRetry();
   const [mainRows, detailRows] = await Promise.all([loadSheet(MAIN_GID), loadSheet(DETAIL_GID)]);
   return { mainRows, detailRows };
 }
@@ -424,18 +441,61 @@ function setNotice(message, isVisible = true) {
   els.notice.classList.toggle("hidden", !isVisible);
 }
 
+function saveLiveCache(mainRows, detailRows) {
+  try {
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
+        mainRows,
+        detailRows,
+        savedAt: new Date().toISOString(),
+      })
+    );
+  } catch {
+    // Cache is best-effort only.
+  }
+}
+
+function loadLiveCache() {
+  try {
+    const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+    if (!cache || !Array.isArray(cache.mainRows) || !Array.isArray(cache.detailRows)) return null;
+    return cache;
+  } catch {
+    return null;
+  }
+}
+
 async function refreshData() {
   try {
     setNotice("", false);
     const { mainRows, detailRows } = await loadDashboardRows();
     state.cards = buildCards(mainRows, detailRows);
+    state.hasLiveData = true;
+    saveLiveCache(mainRows, detailRows);
     if (!state.cards.length) {
       state.cards = buildCards(fallbackMainRows, fallbackDetailRows);
+      state.hasLiveData = false;
       setNotice("시트에 표시할 행이 없어 예시 데이터로 표시 중입니다.");
     }
   } catch (error) {
-    state.cards = buildCards(fallbackMainRows, fallbackDetailRows);
-    setNotice(`시트를 바로 읽지 못해 예시 데이터로 표시 중입니다. Apps Script URL이나 구글시트 공유/배포 설정을 확인해주세요. (${error.message})`);
+    const cache = loadLiveCache();
+    if (state.cards.length) {
+      setNotice(`Apps Script 응답이 잠시 불안정해 마지막 정상 화면을 유지 중입니다. (${error.message})`);
+    } else if (cache) {
+      state.cards = buildCards(cache.mainRows, cache.detailRows);
+      state.hasLiveData = true;
+      const savedAt = new Date(cache.savedAt).toLocaleTimeString("ko-KR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      setNotice(`Apps Script 응답이 잠시 불안정해 ${savedAt}에 저장된 마지막 정상 데이터를 표시 중입니다. (${error.message})`);
+    } else {
+      state.cards = buildCards(fallbackMainRows, fallbackDetailRows);
+      state.hasLiveData = false;
+      setNotice(`시트를 바로 읽지 못해 예시 데이터로 표시 중입니다. Apps Script URL이나 구글시트 공유/배포 설정을 확인해주세요. (${error.message})`);
+    }
   }
   render();
 }
