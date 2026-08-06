@@ -6,6 +6,8 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxHBCS3-7XPLx3e
 const REQUIRED_MAIN_COLUMNS = ["STATUS", "Location", "OWNER"];
 const OUT_DETAIL_COLUMNS = ["low power", "RF1", "RF2", "FW"];
 const IN_DETAIL_COLUMNS = ["FW"];
+const ARTIST_COLUMNS = ["artist", "ARTIST", "Artist", "아티스트", "가수"];
+const PLACE_COLUMNS = ["place", "PLACE", "Place", "장소", "공연장", "지역"];
 const EQUIPMENT_ID_COLUMNS = [
   "Equipment ID",
   "EquipmentID",
@@ -238,6 +240,41 @@ function pickFields(row, columns) {
   }, {});
 }
 
+function getLocationParts(row, location) {
+  const artist = pickValue(row, ARTIST_COLUMNS);
+  const place = pickValue(row, PLACE_COLUMNS);
+  if (artist || place) {
+    return {
+      artist,
+      place: place || location,
+    };
+  }
+
+  const value = String(location || "").trim();
+  if (!value) return { artist: "", place: "" };
+
+  const newlineParts = value.split(/\r?\n/).map((part) => part.trim()).filter(Boolean);
+  if (newlineParts.length >= 2) {
+    return {
+      artist: newlineParts[0],
+      place: newlineParts.slice(1).join(" "),
+    };
+  }
+
+  const spacedParts = value.split(/\s+/).filter(Boolean);
+  if (spacedParts.length >= 2) {
+    return {
+      artist: spacedParts[0],
+      place: spacedParts.slice(1).join(" "),
+    };
+  }
+
+  return {
+    artist: "",
+    place: value,
+  };
+}
+
 function pickEquipmentId(row, index) {
   const idValue = pickValue(row, EQUIPMENT_ID_COLUMNS);
   if (idValue) return idValue;
@@ -281,6 +318,7 @@ function buildCards(mainRows, detailRows) {
     const fields = pickFields(row, REQUIRED_MAIN_COLUMNS);
     const equipmentId = pickEquipmentId(row, index);
     const detailColumns = isOut ? OUT_DETAIL_COLUMNS : IN_DETAIL_COLUMNS;
+    const locationParts = getLocationParts(row, fields.Location);
 
     return {
       id: `${equipmentId}-${index}`,
@@ -288,6 +326,8 @@ function buildCards(mainRows, detailRows) {
       status,
       isOut,
       location: fields.Location,
+      artist: locationParts.artist,
+      place: locationParts.place,
       owner: fields.OWNER,
       details: pickFields(detailRow, detailColumns),
     };
@@ -301,6 +341,8 @@ function getFilteredCards() {
       card.title,
       card.status,
       card.location,
+      card.artist,
+      card.place,
       card.owner,
       ...Object.values(card.details),
     ]
@@ -413,7 +455,13 @@ function renderCard(card) {
       </div>
       <dl class="basic-info">
         <div><dt>STATUS</dt><dd>${escapeHtml(displayStatus(card.status))}</dd></div>
-        <div><dt>Location</dt><dd>${escapeHtml(card.location || "-")}</dd></div>
+        <div class="location-info">
+          <dt>Location</dt>
+          <dd>
+            <span>${escapeHtml(card.artist || "-")}</span>
+            <span>${escapeHtml(card.place || "-")}</span>
+          </dd>
+        </div>
         <div><dt>OWNER</dt><dd>${escapeHtml(card.owner || "-")}</dd></div>
       </dl>
       <div class="detail-list">${detailItems || `<span class="detail-chip muted">FW -</span>`}</div>
