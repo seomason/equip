@@ -408,6 +408,12 @@ h1 {
   }
 }
 
+@media (min-width: 981px) and (max-width: 1200px) {
+  .equipment-board {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (orientation: portrait) and (min-height: 1200px) {
   .dashboard {
     padding: 18px 22px 24px;
