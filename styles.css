@@ -35,7 +35,7 @@ select {
   width: 100%;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 14px 28px 18px;
+  padding: 18px 28px 24px;
 }
 
 .topbar {
@@ -54,7 +54,7 @@ select {
 }
 
 .brand-logo {
-  width: 92px;
+  width: 104px;
   max-width: 28vw;
   max-height: 48px;
   object-fit: contain;
@@ -256,15 +256,15 @@ h1 {
 
 .equipment-board {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
-  gap: 10px;
-  padding: 10px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
   background: #0e1416;
 }
 
 .equipment-card {
   position: relative;
-  min-height: 152px;
+  min-height: 158px;
   padding: 12px;
   border: 1px solid #263236;
   border-radius: 2px;
@@ -312,7 +312,7 @@ h1 {
 
 .status-pill {
   min-height: 22px;
-  padding: 4px 8px;
+  padding: 4px 9px;
   font-size: 11px;
   color: #ffffff;
 }
@@ -361,7 +361,7 @@ h1 {
 .basic-info dt {
   margin: 0 0 4px;
   color: #40606a;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 900;
 }
 
@@ -404,7 +404,90 @@ h1 {
 
 @media (min-width: 1800px) {
   .equipment-board {
-    grid-template-columns: repeat(10, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (orientation: portrait) and (min-height: 1200px) {
+  .dashboard {
+    padding: 18px 22px 24px;
+  }
+
+  .topbar {
+    margin-bottom: 12px;
+  }
+
+  .brand-logo {
+    width: 88px;
+    max-height: 44px;
+  }
+
+  h1 {
+    font-size: 42px;
+  }
+
+  .status-strip {
+    gap: 8px;
+  }
+
+  .metric {
+    min-height: 72px;
+    padding: 10px 12px;
+  }
+
+  .metric strong {
+    font-size: 38px;
+  }
+
+  .equipment-group {
+    padding: 12px;
+  }
+
+  .group-title {
+    font-size: 34px;
+  }
+
+  .equipment-board {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .equipment-card {
+    min-height: 158px;
+    padding: 12px;
+  }
+
+  .card-head h3 {
+    font-size: 17px;
+  }
+
+  .status-pill {
+    min-height: 22px;
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .basic-info {
+    gap: 6px;
+  }
+
+  .basic-info div {
+    padding: 7px;
+  }
+
+  .basic-info dt {
+    font-size: 8px;
+  }
+
+  .basic-info dd {
+    font-size: 11px;
+  }
+
+  .detail-chip {
+    min-height: 22px;
+    padding: 4px 7px;
+    font-size: 10px;
   }
 }
 
