@@ -383,8 +383,8 @@ h1 {
 }
 
 .detail-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  justify-items: start;
   gap: 5px;
 }
 
@@ -400,6 +400,7 @@ h1 {
   background: rgba(255, 255, 255, 0.68);
   color: #14222a;
   font-size: 10px;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
