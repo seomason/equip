@@ -373,6 +373,15 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.location-info dd {
+  display: grid;
+  gap: 2px;
+}
+
+.location-info dd span {
+  line-height: 1.15;
+}
+
 .detail-list {
   display: flex;
   flex-wrap: wrap;
