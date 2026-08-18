@@ -216,17 +216,19 @@ async function loadAppsScriptDashboardWithRetry() {
 }
 
 async function loadDashboardRows() {
-  if (APPS_SCRIPT_URL) {
+  try {
+    const [mainRows, detailRows] = await Promise.all([loadSheet(MAIN_GID), loadSheet(DETAIL_GID)]);
+    return { mainRows, detailRows };
+  } catch (directError) {
+    if (!APPS_SCRIPT_URL) throw directError;
+
     try {
-      return await loadAppsScriptDashboardWithRetry();
-    } catch (error) {
-      const [mainRows, detailRows] = await Promise.all([loadSheet(MAIN_GID), loadSheet(DETAIL_GID)]);
-      return { mainRows, detailRows, fallbackSource: true, fallbackError: error };
+      const rows = await loadAppsScriptDashboardWithRetry();
+      return { ...rows, fallbackSource: true, fallbackError: directError };
+    } catch {
+      throw directError;
     }
   }
-
-  const [mainRows, detailRows] = await Promise.all([loadSheet(MAIN_GID), loadSheet(DETAIL_GID)]);
-  return { mainRows, detailRows };
 }
 
 function findColumn(row, candidates) {
@@ -542,7 +544,7 @@ async function refreshData() {
       state.hasLiveData = false;
       setNotice("시트에 표시할 행이 없어 예시 데이터로 표시 중입니다.");
     } else if (fallbackSource) {
-      setNotice(`Apps Script 응답이 늦어 구글시트 직접 연결로 표시 중입니다. (${fallbackError.message})`);
+      setNotice(`구글시트 직접 연결이 늦어 Apps Script 백업 데이터로 표시 중입니다. (${fallbackError.message})`);
     }
   } catch (error) {
     state.consecutiveFailures += 1;
