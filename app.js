@@ -41,6 +41,9 @@ const state = {
   search: "",
   timer: null,
   hasLiveData: false,
+  isRefreshing: false,
+  consecutiveFailures: 0,
+  lastSuccessAt: null,
 };
 
 const CACHE_KEY = "equipment-dashboard-live-cache-v1";
@@ -213,7 +216,15 @@ async function loadAppsScriptDashboardWithRetry() {
 }
 
 async function loadDashboardRows() {
-  if (APPS_SCRIPT_URL) return loadAppsScriptDashboardWithRetry();
+  if (APPS_SCRIPT_URL) {
+    try {
+      return await loadAppsScriptDashboardWithRetry();
+    } catch (error) {
+      const [mainRows, detailRows] = await Promise.all([loadSheet(MAIN_GID), loadSheet(DETAIL_GID)]);
+      return { mainRows, detailRows, fallbackSource: true, fallbackError: error };
+    }
+  }
+
   const [mainRows, detailRows] = await Promise.all([loadSheet(MAIN_GID), loadSheet(DETAIL_GID)]);
   return { mainRows, detailRows };
 }
@@ -515,21 +526,33 @@ function loadLiveCache() {
 }
 
 async function refreshData() {
+  if (state.isRefreshing) return;
+  state.isRefreshing = true;
+
   try {
     setNotice("", false);
-    const { mainRows, detailRows } = await loadDashboardRows();
+    const { mainRows, detailRows, fallbackSource, fallbackError } = await loadDashboardRows();
     state.cards = buildCards(mainRows, detailRows);
     state.hasLiveData = true;
+    state.consecutiveFailures = 0;
+    state.lastSuccessAt = new Date();
     saveLiveCache(mainRows, detailRows);
     if (!state.cards.length) {
       state.cards = buildCards(fallbackMainRows, fallbackDetailRows);
       state.hasLiveData = false;
       setNotice("시트에 표시할 행이 없어 예시 데이터로 표시 중입니다.");
+    } else if (fallbackSource) {
+      setNotice(`Apps Script 응답이 늦어 구글시트 직접 연결로 표시 중입니다. (${fallbackError.message})`);
     }
   } catch (error) {
+    state.consecutiveFailures += 1;
     const cache = loadLiveCache();
     if (state.cards.length) {
-      setNotice(`Apps Script 응답이 잠시 불안정해 마지막 정상 화면을 유지 중입니다. (${error.message})`);
+      if (state.consecutiveFailures >= 3) {
+        setNotice(`데이터 연결이 ${state.consecutiveFailures}회 연속 불안정해 마지막 정상 화면을 유지 중입니다. (${error.message})`);
+      } else {
+        setNotice("", false);
+      }
     } else if (cache) {
       state.cards = buildCards(cache.mainRows, cache.detailRows);
       state.hasLiveData = true;
@@ -544,6 +567,8 @@ async function refreshData() {
       state.hasLiveData = false;
       setNotice(`시트를 바로 읽지 못해 예시 데이터로 표시 중입니다. Apps Script URL이나 구글시트 공유/배포 설정을 확인해주세요. (${error.message})`);
     }
+  } finally {
+    state.isRefreshing = false;
   }
   render();
 }
